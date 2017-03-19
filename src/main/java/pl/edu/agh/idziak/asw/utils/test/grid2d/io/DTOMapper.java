@@ -1,14 +1,23 @@
 package pl.edu.agh.idziak.asw.utils.test.grid2d.io;
 
+import com.google.common.collect.ImmutableList;
+import pl.edu.agh.idziak.asw.common.Utils;
 import pl.edu.agh.idziak.asw.impl.grid2d.G2DCollectiveState;
 import pl.edu.agh.idziak.asw.impl.grid2d.G2DEntityState;
 import pl.edu.agh.idziak.asw.impl.grid2d.G2DInputPlan;
 import pl.edu.agh.idziak.asw.impl.grid2d.G2DStateSpace;
+import pl.edu.agh.idziak.asw.impl.gridarray.G2DOptCollectiveState;
+import pl.edu.agh.idziak.asw.impl.gridarray.G2DOptInputPlan;
+import pl.edu.agh.idziak.asw.impl.gridarray.G2DOptStateSpace;
 import pl.edu.agh.idziak.asw.utils.test.grid2d.InvalidInputException;
 import pl.edu.agh.idziak.asw.utils.test.grid2d.model.Entity;
+import pl.edu.agh.idziak.asw.utils.test.grid2d.model.OptimizedTestCase;
 import pl.edu.agh.idziak.asw.utils.test.grid2d.model.TestCase;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 import static java.lang.String.format;
 import static java.util.Comparator.comparing;
@@ -52,6 +61,42 @@ public class DTOMapper {
         return new TestCase(testCaseDTO.getName(), g2DInputPlan, DTOMapper.isLightlyDefined(testCaseDTO));
     }
 
+    public static OptimizedTestCase dtoToInternalOpt(TestCaseDTO testCaseDTO) {
+        List<EntityDTO> entityDTOS = testCaseDTO.getEntities();
+        int numEntities = entityDTOS.size();
+        G2DOptStateSpace stateSpace = mapStateSpaceOpt(testCaseDTO);
+
+        entityDTOS.sort(comparing(EntityDTO::getId));
+
+        byte[] initialStateArray = new byte[numEntities * 2];
+        byte[] targetStateArray = new byte[numEntities * 2];
+        int i = 0;
+        ImmutableList.Builder<Entity> entities = ImmutableList.builder();
+
+        for (EntityDTO entityDTO : entityDTOS) {
+            Entity entity = Entity.newBuilder().id(entityDTO.getId()).build();
+            entities.add(entity);
+
+            // validateEntityRow(stateSpace, entity, entityRow);
+            // validateEntityColumn(stateSpace, entity, entityCol);
+
+            initialStateArray[i] = entityDTO.getRow().byteValue();
+            initialStateArray[i + 1] = entityDTO.getCol().byteValue();
+
+            targetStateArray[i] = entityDTO.getTargetRow().byteValue();
+            targetStateArray[i + 1] = entityDTO.getTargetCol().byteValue();
+            i += 2;
+        }
+
+        G2DOptCollectiveState initialState = new G2DOptCollectiveState(initialStateArray);
+        G2DOptCollectiveState targetState = new G2DOptCollectiveState(targetStateArray);
+
+        G2DOptInputPlan g2DInputPlan = new G2DOptInputPlan(
+                entities.build(), stateSpace, initialState, targetState);
+
+        return new OptimizedTestCase(testCaseDTO.getName(), g2DInputPlan, DTOMapper.isLightlyDefined(testCaseDTO));
+    }
+
     private static void validateEntityColumn(G2DStateSpace stateSpace, Entity entity, Integer entityCol) {
         if (entityCol >= stateSpace.countCols() || entityCol < 0) {
             throw new InvalidInputException(
@@ -66,20 +111,6 @@ public class DTOMapper {
                     format("Position of entity %s is beyond the boundaries of state space. Entity row was %s, state space has %s rows.",
                             entity, entityRow, stateSpace.countRows()));
         }
-    }
-
-    public static TestCaseDTO internalToDto(TestCase testCase) {
-        TestCaseDTO.Builder builder = TestCaseDTO.newBuilder().name(testCase.getName());
-        G2DStateSpace stateSpace = testCase.getInputPlan().getStateSpace();
-        if (testCase.isSparseDefinition()) {
-            builder.stateSpaceCols(stateSpace.countCols());
-            builder.stateSpaceRows(stateSpace.countRows());
-        } else {
-            builder.stateSpace(stateSpace.getGridArray());
-        }
-        return builder
-                .entities(inputPlanToEntityDTOs(testCase.getInputPlan()))
-                .build();
     }
 
     private static void validateStatesUniquePositions(Map<Object, G2DEntityState> states) {
@@ -104,34 +135,23 @@ public class DTOMapper {
         return stateSpace;
     }
 
+    private static G2DOptStateSpace mapStateSpaceOpt(TestCaseDTO testCaseDTO) {
+        G2DOptStateSpace stateSpace;
+        if (testCaseDTO.getStateSpace() != null) {
+            stateSpace = new G2DOptStateSpace(Utils.toByteArray(testCaseDTO.getStateSpace()));
+        } else {
+            if (!isLightlyDefined(testCaseDTO)) {
+                throw new RuntimeException("Missing state space definition in " + testCaseDTO);
+            }
+            Integer rows = testCaseDTO.getStateSpaceRows();
+            Integer cols = testCaseDTO.getStateSpaceCols();
+            stateSpace = new G2DOptStateSpace(Utils.toByteArray(new int[rows][cols]));
+        }
+        return stateSpace;
+    }
+
     private static boolean isLightlyDefined(TestCaseDTO testCaseDTO) {
         return testCaseDTO.getStateSpaceCols() != null && testCaseDTO.getStateSpaceRows() != null;
     }
 
-    private static List<EntityDTO> inputPlanToEntityDTOs(G2DInputPlan inputPlan) {
-        Set<?> entities = inputPlan.getEntities();
-        G2DCollectiveState initialCollectiveState = inputPlan.getInitialCollectiveState();
-        G2DCollectiveState targetCollectiveState = inputPlan.getTargetCollectiveState();
-
-        List<EntityDTO> dtoList = new ArrayList<>(entities.size());
-
-        for (Object entity : entities) {
-            G2DEntityState initialState = initialCollectiveState.getStateForEntity(entity);
-            G2DEntityState targetState = targetCollectiveState.getStateForEntity(entity);
-
-            EntityDTO.Builder builder = EntityDTO.newBuilder()
-                                                 .row(initialState.getRow())
-                                                 .col(initialState.getCol())
-                                                 .targetRow(targetState.getRow())
-                                                 .targetCol(targetState.getCol());
-
-            if (entity instanceof Entity) {
-                Entity entity1 = (Entity) entity;
-                builder.id(entity1.getId());
-            }
-
-            dtoList.add(builder.build());
-        }
-        return dtoList;
-    }
 }
