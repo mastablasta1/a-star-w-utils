@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory;
 import pl.edu.agh.idziak.asw.common.Benchmark;
 import pl.edu.agh.idziak.asw.common.Statistics;
 import pl.edu.agh.idziak.asw.impl.AlgorithmType;
-import pl.edu.agh.idziak.asw.impl.ExtendedOutputPlan;
-import pl.edu.agh.idziak.asw.impl.gridarray.*;
+import pl.edu.agh.idziak.asw.impl.grid2d.*;
+import pl.edu.agh.idziak.asw.model.ASWOutputPlan;
 import pl.edu.agh.idziak.asw.model.ImmutableASWOutputPlan;
 import pl.edu.agh.idziak.asw.utils.test.grid2d.model.OptimizedTestCase;
 
@@ -30,9 +30,9 @@ public class OptimizedTestExecutor {
     private final SimpleObjectProperty<Statistics> statistics;
     private ExecutionObserver executionObserver;
 
-    private final G2DPlanner g2DPlanner = new G2DPlanner();
-    private final G2DAStarPlanner g2DAStarPlanner = new G2DAStarPlanner();
-    private final G2DWavefrontPlanner g2DWavefrontPlanner = new G2DWavefrontPlanner();
+    private final GridASWPlanner gridASWPlanner = new GridASWPlanner();
+    private final GridAStarOnlyPlanner gridAStarOnlyPlanner = new GridAStarOnlyPlanner();
+    private final GridWavefrontOnlyPlanner gridWavefrontOnlyPlanner = new GridWavefrontOnlyPlanner();
 
     public OptimizedTestExecutor(ExecutionObserver executionObserver) {
         this.executionObserver = executionObserver;
@@ -55,14 +55,14 @@ public class OptimizedTestExecutor {
         return testExecutionTask.testCase;
     }
 
-    private ExtendedOutputPlan<G2DOptStateSpace, G2DOptCollectiveState> executeTestWithGivenStrategy(G2DOptInputPlan inputPlan, AlgorithmType algorithmType) {
+    private ASWOutputPlan<GridStateSpace, GridCollectiveState> executeTestWithGivenStrategy(GridInputPlan inputPlan, AlgorithmType algorithmType) {
         switch (algorithmType) {
             case ASW:
-                return null; //g2DPlanner.calculatePlanWithBenchmark(inputPlan);
+                return null; //gridASWPlanner.calculatePlanWithBenchmark(inputPlan);
             case ASTAR_ONLY:
-                return g2DAStarPlanner.calculatePlanWithBenchmark(inputPlan);
+                return gridAStarOnlyPlanner.calculatePlan(inputPlan);
             case WAVEFRONT:
-                return null; //g2DWavefrontPlanner.calculatePlanWithBenchmark(inputPlan);
+                return null; //gridWavefrontOnlyPlanner.calculatePlanWithBenchmark(inputPlan);
         }
         return null;
     }
@@ -71,7 +71,7 @@ public class OptimizedTestExecutor {
         return statistics;
     }
 
-    private static Statistics buildStats(Benchmark benchmark, ImmutableASWOutputPlan<G2DOptStateSpace, G2DOptCollectiveState> outputPlan) {
+    private static Statistics buildStats(Benchmark benchmark, ImmutableASWOutputPlan<GridStateSpace, GridCollectiveState> outputPlan) {
         Statistics statistics = new Statistics("Stats for " + benchmark.getAlgorithmType());
         statistics.putInfo("algorithmType", benchmark.getAlgorithmType().name());
         if (benchmark.getIterationCount() != null)
@@ -80,14 +80,14 @@ public class OptimizedTestExecutor {
             statistics.putStat("max size of a* open set", benchmark.getMaxSizeOfOpenSet());
         if (benchmark.getAStarCalculationTimeMs() != null)
             statistics.putStat("a* calc time millis", benchmark.getAStarCalculationTimeMs().intValue());
-        if (benchmark.getDeviationZonesSearchTimeMs() != null)
-            statistics.putStat("dev zone search time millis", benchmark.getDeviationZonesSearchTimeMs().intValue());
+        if (benchmark.getDeviationSubspacesSearchTimeMs() != null)
+            statistics.putStat("dev zone search time millis", benchmark.getDeviationSubspacesSearchTimeMs().intValue());
         if (benchmark.getWavefrontCalculationTimeMs() != null)
             statistics.putStat("wavefront calc time millis", benchmark.getWavefrontCalculationTimeMs().intValue());
         if (outputPlan.getCollectivePath().get() != null)
             statistics.putStat("path length", outputPlan.getCollectivePath().get().size());
-        if (!outputPlan.getSubspacePlans().isEmpty())
-            statistics.putStat("deviation zones count", outputPlan.getSubspacePlans().size());
+        if (!outputPlan.getDeviationSubspacePlans().isEmpty())
+            statistics.putStat("deviation zones count", outputPlan.getDeviationSubspacePlans().size());
         return statistics;
     }
 
@@ -95,7 +95,7 @@ public class OptimizedTestExecutor {
 
         private final OptimizedTestCase testCase;
         private AlgorithmType algorithmType;
-        private ExtendedOutputPlan<G2DOptStateSpace, G2DOptCollectiveState> outputPlan;
+        private ASWOutputPlan<GridStateSpace, GridCollectiveState> outputPlan;
 
         private TestExecutionTask(OptimizedTestCase testCase, AlgorithmType algorithmType) {
             this.testCase = testCase;
@@ -105,7 +105,7 @@ public class OptimizedTestExecutor {
         public void run() {
             outputPlan = executeTestWithGivenStrategy(testCase.getInputPlan(), algorithmType);
             testCase.setOutputPlan(outputPlan);
-            statistics.set(buildStats(outputPlan.getBenchmark(), outputPlan.getOutputPlan()));
+
         }
 
     }

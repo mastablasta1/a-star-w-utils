@@ -30,9 +30,9 @@ public class TestExecutor {
     private final SimpleObjectProperty<Statistics> statistics;
     private ExecutionObserver executionObserver;
 
-    private final G2DPlanner g2DPlanner = new G2DPlanner();
-    private final G2DAStarPlanner g2DAStarPlanner = new G2DAStarPlanner();
-    private final G2DWavefrontPlanner g2DWavefrontPlanner = new G2DWavefrontPlanner();
+    private final GridASWPlanner gridASWPlanner = new GridASWPlanner();
+    private final GridAStarOnlyPlanner gridAStarOnlyPlanner = new GridAStarOnlyPlanner();
+    private final GridWavefrontOnlyPlanner gridWavefrontOnlyPlanner = new GridWavefrontOnlyPlanner();
 
     public TestExecutor(ExecutionObserver executionObserver) {
         this.executionObserver = executionObserver;
@@ -54,14 +54,14 @@ public class TestExecutor {
         MoreExecutors.directExecutor().execute(testExecutionTask);
     }
 
-    private ExtendedOutputPlan<G2DStateSpace, G2DCollectiveState> executeTestWithGivenStrategy(G2DInputPlan inputPlan, AlgorithmType algorithmType) {
+    private ExtendedOutputPlan<GridStateSpace, GridCollectiveState> executeTestWithGivenStrategy(GridInputPlan inputPlan, AlgorithmType algorithmType) {
         switch (algorithmType) {
             case ASW:
-                return g2DPlanner.calculatePlanWithBenchmark(inputPlan);
+                return gridASWPlanner.calculatePlanWithBenchmark(inputPlan);
             case ASTAR_ONLY:
-                return g2DAStarPlanner.calculatePlanWithBenchmark(inputPlan);
+                return gridAStarOnlyPlanner.calculatePlanWithBenchmark(inputPlan);
             case WAVEFRONT:
-                return g2DWavefrontPlanner.calculatePlanWithBenchmark(inputPlan);
+                return gridWavefrontOnlyPlanner.calculatePlanWithBenchmark(inputPlan);
         }
         return null;
     }
@@ -70,7 +70,7 @@ public class TestExecutor {
         return statistics;
     }
 
-    private static Statistics buildStats(Benchmark benchmark, ImmutableASWOutputPlan<G2DStateSpace, G2DCollectiveState> outputPlan) {
+    private static Statistics buildStats(Benchmark benchmark, ImmutableASWOutputPlan<GridStateSpace, GridCollectiveState> outputPlan) {
         Statistics statistics = new Statistics("Stats for " + benchmark.getAlgorithmType());
         statistics.putInfo("algorithmType", benchmark.getAlgorithmType().name());
         if (benchmark.getIterationCount() != null)
@@ -79,14 +79,14 @@ public class TestExecutor {
             statistics.putStat("max size of a* open set", benchmark.getMaxSizeOfOpenSet());
         if (benchmark.getAStarCalculationTimeMs() != null)
             statistics.putStat("a* calc time millis", benchmark.getAStarCalculationTimeMs().intValue());
-        if (benchmark.getDeviationZonesSearchTimeMs() != null)
-            statistics.putStat("dev zone search time millis", benchmark.getDeviationZonesSearchTimeMs().intValue());
+        if (benchmark.getDeviationSubspacesSearchTimeMs() != null)
+            statistics.putStat("dev zone search time millis", benchmark.getDeviationSubspacesSearchTimeMs().intValue());
         if (benchmark.getWavefrontCalculationTimeMs() != null)
             statistics.putStat("wavefront calc time millis", benchmark.getWavefrontCalculationTimeMs().intValue());
         if (outputPlan.getCollectivePath().get() != null)
             statistics.putStat("path length", outputPlan.getCollectivePath().get().size());
-        if (!outputPlan.getSubspacePlans().isEmpty())
-            statistics.putStat("deviation zones count", outputPlan.getSubspacePlans().size());
+        if (!outputPlan.getDeviationSubspacePlans().isEmpty())
+            statistics.putStat("deviation zones count", outputPlan.getDeviationSubspacePlans().size());
         return statistics;
     }
 
@@ -94,7 +94,7 @@ public class TestExecutor {
 
         private final TestCase testCase;
         private AlgorithmType algorithmType;
-        private ExtendedOutputPlan<G2DStateSpace, G2DCollectiveState> outputPlan;
+        private ExtendedOutputPlan<GridStateSpace, GridCollectiveState> outputPlan;
 
         private TestExecutionTask(TestCase testCase, AlgorithmType algorithmType) {
             this.testCase = testCase;

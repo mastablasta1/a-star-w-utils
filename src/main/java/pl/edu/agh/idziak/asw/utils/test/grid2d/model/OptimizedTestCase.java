@@ -1,27 +1,28 @@
 package pl.edu.agh.idziak.asw.utils.test.grid2d.model;
 
 import pl.edu.agh.idziak.asw.impl.ExtendedOutputPlan;
-import pl.edu.agh.idziak.asw.impl.gridarray.G2DOptCollectiveState;
-import pl.edu.agh.idziak.asw.impl.gridarray.G2DOptInputPlan;
-import pl.edu.agh.idziak.asw.impl.gridarray.G2DOptStateSpace;
+import pl.edu.agh.idziak.asw.impl.grid2d.GridCollectiveState;
+import pl.edu.agh.idziak.asw.impl.grid2d.GridInputPlan;
+import pl.edu.agh.idziak.asw.impl.grid2d.GridStateSpace;
+import pl.edu.agh.idziak.asw.model.ASWOutputPlan;
 
 /**
  * Created by Tomasz on 27.08.2016.
  */
 public class OptimizedTestCase {
 
-    private G2DOptInputPlan inputPlan;
+    private GridInputPlan inputPlan;
     private String name;
     private boolean sparseDefinition;
-    private ExtendedOutputPlan<G2DOptStateSpace, G2DOptCollectiveState> outputPlan;
+    private ASWOutputPlan<GridStateSpace, GridCollectiveState> outputPlan;
 
-    public OptimizedTestCase(String name, G2DOptInputPlan inputPlan, boolean sparseDefinition) {
+    public OptimizedTestCase(String name, GridInputPlan inputPlan, boolean sparseDefinition) {
         this.name = name;
         this.inputPlan = inputPlan;
         this.sparseDefinition = sparseDefinition;
     }
 
-    public G2DOptInputPlan getInputPlan() {
+    public GridInputPlan getInputPlan() {
         return inputPlan;
     }
 
@@ -37,11 +38,11 @@ public class OptimizedTestCase {
         return sparseDefinition;
     }
 
-    public void setOutputPlan(ExtendedOutputPlan<G2DOptStateSpace, G2DOptCollectiveState> outputPlan) {
+    public void setOutputPlan(ASWOutputPlan<GridStateSpace, GridCollectiveState> outputPlan) {
         this.outputPlan = outputPlan;
     }
 
-    public ExtendedOutputPlan<G2DOptStateSpace, G2DOptCollectiveState> getExtendedOutputPlan() {
+    public ExtendedOutputPlan<GridStateSpace, GridCollectiveState> getExtendedOutputPlan() {
         return outputPlan;
     }
 }

@@ -2,13 +2,10 @@ package pl.edu.agh.idziak.asw.utils.test.grid2d.io;
 
 import com.google.common.collect.ImmutableList;
 import pl.edu.agh.idziak.asw.common.Utils;
-import pl.edu.agh.idziak.asw.impl.grid2d.G2DCollectiveState;
-import pl.edu.agh.idziak.asw.impl.grid2d.G2DEntityState;
-import pl.edu.agh.idziak.asw.impl.grid2d.G2DInputPlan;
-import pl.edu.agh.idziak.asw.impl.grid2d.G2DStateSpace;
-import pl.edu.agh.idziak.asw.impl.gridarray.G2DOptCollectiveState;
-import pl.edu.agh.idziak.asw.impl.gridarray.G2DOptInputPlan;
-import pl.edu.agh.idziak.asw.impl.gridarray.G2DOptStateSpace;
+import pl.edu.agh.idziak.asw.impl.grid2d.GridCollectiveState;
+import pl.edu.agh.idziak.asw.impl.grid2d.GridEntityState;
+import pl.edu.agh.idziak.asw.impl.grid2d.GridInputPlan;
+import pl.edu.agh.idziak.asw.impl.grid2d.GridStateSpace;
 import pl.edu.agh.idziak.asw.utils.test.grid2d.InvalidInputException;
 import pl.edu.agh.idziak.asw.utils.test.grid2d.model.Entity;
 import pl.edu.agh.idziak.asw.utils.test.grid2d.model.OptimizedTestCase;
@@ -30,10 +27,10 @@ public class DTOMapper {
     public static TestCase dtoToInternal(TestCaseDTO testCaseDTO) {
         List<EntityDTO> entities = testCaseDTO.getEntities();
         int numEntities = entities.size();
-        G2DStateSpace stateSpace = mapStateSpace(testCaseDTO);
+        GridStateSpace stateSpace = mapStateSpace(testCaseDTO);
 
-        Map<Object, G2DEntityState> initialStates = new HashMap<>(numEntities);
-        Map<Object, G2DEntityState> targetStates = new HashMap<>(numEntities);
+        Map<Object, GridEntityState> initialStates = new HashMap<>(numEntities);
+        Map<Object, GridEntityState> targetStates = new HashMap<>(numEntities);
 
         entities.sort(comparing(EntityDTO::getId));
 
@@ -46,25 +43,25 @@ public class DTOMapper {
             validateEntityRow(stateSpace, entity, entityRow);
             validateEntityColumn(stateSpace, entity, entityCol);
 
-            initialStates.put(entity, G2DEntityState.of(entityRow, entityCol));
-            targetStates.put(entity, G2DEntityState.of(entityDTO.getTargetRow(), entityDTO.getTargetCol()));
+            initialStates.put(entity, GridEntityState.of(entityRow, entityCol));
+            targetStates.put(entity, GridEntityState.of(entityDTO.getTargetRow(), entityDTO.getTargetCol()));
         }
         validateStatesUniquePositions(targetStates);
         validateStatesUniquePositions(initialStates);
 
-        G2DCollectiveState initialState = G2DCollectiveState.from(initialStates);
-        G2DCollectiveState targetState = G2DCollectiveState.from(targetStates);
+        GridCollectiveState initialState = GridCollectiveState.from(initialStates);
+        GridCollectiveState targetState = GridCollectiveState.from(targetStates);
 
-        G2DInputPlan g2DInputPlan = new G2DInputPlan(
+        GridInputPlan gridInputPlan = new GridInputPlan(
                 initialState.getEntityStates().keySet(), stateSpace, initialState, targetState);
 
-        return new TestCase(testCaseDTO.getName(), g2DInputPlan, DTOMapper.isLightlyDefined(testCaseDTO));
+        return new TestCase(testCaseDTO.getName(), gridInputPlan, DTOMapper.isLightlyDefined(testCaseDTO));
     }
 
     public static OptimizedTestCase dtoToInternalOpt(TestCaseDTO testCaseDTO) {
         List<EntityDTO> entityDTOS = testCaseDTO.getEntities();
         int numEntities = entityDTOS.size();
-        G2DOptStateSpace stateSpace = mapStateSpaceOpt(testCaseDTO);
+        GridStateSpace stateSpace = mapStateSpaceOpt(testCaseDTO);
 
         entityDTOS.sort(comparing(EntityDTO::getId));
 
@@ -88,64 +85,64 @@ public class DTOMapper {
             i += 2;
         }
 
-        G2DOptCollectiveState initialState = new G2DOptCollectiveState(initialStateArray);
-        G2DOptCollectiveState targetState = new G2DOptCollectiveState(targetStateArray);
+        GridCollectiveState initialState = new GridCollectiveState(initialStateArray);
+        GridCollectiveState targetState = new GridCollectiveState(targetStateArray);
 
-        G2DOptInputPlan g2DInputPlan = new G2DOptInputPlan(
+        GridInputPlan gridInputPlan = new GridInputPlan(
                 entities.build(), stateSpace, initialState, targetState);
 
-        return new OptimizedTestCase(testCaseDTO.getName(), g2DInputPlan, DTOMapper.isLightlyDefined(testCaseDTO));
+        return new OptimizedTestCase(testCaseDTO.getName(), gridInputPlan, DTOMapper.isLightlyDefined(testCaseDTO));
     }
 
-    private static void validateEntityColumn(G2DStateSpace stateSpace, Entity entity, Integer entityCol) {
-        if (entityCol >= stateSpace.countCols() || entityCol < 0) {
+    private static void validateEntityColumn(GridStateSpace stateSpace, Entity entity, Integer entityCol) {
+        if (entityCol >= stateSpace.getCols() || entityCol < 0) {
             throw new InvalidInputException(
                     format("Position of entity %s is beyond the boundaries of state space. Entity column was %s, state space has %s columns.",
-                            entity, entityCol, stateSpace.countCols()));
+                            entity, entityCol, stateSpace.getCols()));
         }
     }
 
-    private static void validateEntityRow(G2DStateSpace stateSpace, Entity entity, Integer entityRow) {
-        if (entityRow >= stateSpace.countRows() || entityRow < 0) {
+    private static void validateEntityRow(GridStateSpace stateSpace, Entity entity, Integer entityRow) {
+        if (entityRow >= stateSpace.getRows() || entityRow < 0) {
             throw new InvalidInputException(
                     format("Position of entity %s is beyond the boundaries of state space. Entity row was %s, state space has %s rows.",
-                            entity, entityRow, stateSpace.countRows()));
+                            entity, entityRow, stateSpace.getRows()));
         }
     }
 
-    private static void validateStatesUniquePositions(Map<Object, G2DEntityState> states) {
-        HashSet<G2DEntityState> statesSet = new HashSet<>(states.values());
+    private static void validateStatesUniquePositions(Map<Object, GridEntityState> states) {
+        HashSet<GridEntityState> statesSet = new HashSet<>(states.values());
         if (statesSet.size() != states.size()) {
             throw new InvalidInputException("Initial or target states of entities are not unique: " + states);
         }
     }
 
-    private static G2DStateSpace mapStateSpace(TestCaseDTO testCaseDTO) {
-        G2DStateSpace stateSpace;
+    private static GridStateSpace mapStateSpace(TestCaseDTO testCaseDTO) {
+        GridStateSpace stateSpace;
         if (testCaseDTO.getStateSpace() != null) {
-            stateSpace = new G2DStateSpace(testCaseDTO.getStateSpace());
+            stateSpace = new GridStateSpace(testCaseDTO.getStateSpace());
         } else {
             if (!isLightlyDefined(testCaseDTO)) {
                 throw new RuntimeException("Missing state space definition in " + testCaseDTO);
             }
             Integer rows = testCaseDTO.getStateSpaceRows();
             Integer cols = testCaseDTO.getStateSpaceCols();
-            stateSpace = new G2DStateSpace(new int[rows][cols]);
+            stateSpace = new GridStateSpace(new int[rows][cols]);
         }
         return stateSpace;
     }
 
-    private static G2DOptStateSpace mapStateSpaceOpt(TestCaseDTO testCaseDTO) {
-        G2DOptStateSpace stateSpace;
+    private static GridStateSpace mapStateSpaceOpt(TestCaseDTO testCaseDTO) {
+        GridStateSpace stateSpace;
         if (testCaseDTO.getStateSpace() != null) {
-            stateSpace = new G2DOptStateSpace(Utils.toByteArray(testCaseDTO.getStateSpace()));
+            stateSpace = new GridStateSpace(Utils.toByteArray(testCaseDTO.getStateSpace()));
         } else {
             if (!isLightlyDefined(testCaseDTO)) {
                 throw new RuntimeException("Missing state space definition in " + testCaseDTO);
             }
             Integer rows = testCaseDTO.getStateSpaceRows();
             Integer cols = testCaseDTO.getStateSpaceCols();
-            stateSpace = new G2DOptStateSpace(Utils.toByteArray(new int[rows][cols]));
+            stateSpace = new GridStateSpace(Utils.toByteArray(new int[rows][cols]));
         }
         return stateSpace;
     }
